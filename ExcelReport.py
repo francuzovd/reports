@@ -17,7 +17,7 @@ from openpyxl.drawing.image import Image
 
 class ExcelReport():
 
-    def __init__():
+    def __init__(self):
         pass
 
     def create(self, sheets_data:dict, path:str):
@@ -32,7 +32,7 @@ class ExcelReport():
             for sheet, contents in sheets_data.items():
                 if not isinstance(sheet, str):
                     raise ValueError('"data" parameter should contains string as key')
-                if not hasattr(data, '__iter__'):
+                if not hasattr(contents, '__iter__'):
                     raise ValueError('"data" parameter should contains iteriable type as value')
 
                 for content in contents:
@@ -45,4 +45,4 @@ class ExcelReport():
                             pass
                         data.to_excel(writer, sheet_name=sheet, startrow=startrow, startcol=startcol, index=False)
 
-        writer.save()
+            writer.save()
