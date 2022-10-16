@@ -59,11 +59,17 @@ class ExcelReport():
 
         wb.save(path)
     
-    def write_pandas(self, data):
-        startrow = self.cur_content.get('startrow')
-        startcol = self.cur_content.get('startcol')
-        rows = dataframe_to_rows(data, index=False, header=True)
+    def write_pandas(self, data, index=False, header=True):
+        values = []
+        for content_key in ('startrow', 'startcol'):
+            content_value = self.cur_content.get(content_key)
+            if isinstance(content_value, int):
+                values.append(content_value)
+            else:
+                raise ValueError(f'{content_key} parameter should be integer.')
+        startrow, startcol = values
 
+        rows = dataframe_to_rows(data, index=index, header=header)
         for rowidx, row in enumerate(rows):
             for colidx, value in enumerate(row):
                 wrow, wcol = (rowidx + startrow + 1), (colidx + startcol + 1)
