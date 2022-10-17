@@ -4,6 +4,7 @@ import numpy as np
 import io
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib.figure import Figure
 import seaborn as sns
 from datetime import date
 import os
@@ -56,6 +57,10 @@ class ExcelReport():
                         self.convertto_Table(data)
                     if formatTable:
                         self.format_ReportTable(data)
+                
+                elif isinstance(data, Figure):
+                    self.drawFigure(data)
+
         del wb['Sheet']
         wb.save(path)
 
@@ -147,7 +152,7 @@ class ExcelReport():
             'TitleFont' : Font(bold=True, size=18)
         }
         ValueBD = self.tableFormat['ValueBD']
-        self.tableFormat['ValueBorder'] = Border(top=ValueBD, right=ValueBD, bottom=ValueBD)
+        self.tableFormat['ValueBorder'] = Border(top=ValueBD, right=ValueBD, bottom=ValueBD, left=ValueBD)
 
     def tabvalueFormat(self):
         for row_idx in range(1, self.tabvalue_start[0] + 1):
@@ -185,8 +190,9 @@ class ExcelReport():
     
     def indexFormat(self):
         # format report index
-        for row_idx in range(0, self.index_start[0] + 1):
-            for col_idx in range(1, self.index_start[1] + 1):
+        for col_idx in range(1, self.index_start[1] + 1):
+            prev_cell = None
+            for row_idx in range(0, self.index_start[0] + 1):
                 r = self.startrow + self.column_start[0] + row_idx
                 c = self.startcol + col_idx
 
@@ -198,16 +204,66 @@ class ExcelReport():
                     cell_.fill = self.tableFormat['LightGreyFill']
                 else:
                     cell_.fill = self.tableFormat['MedGreyFill']
+                
+                cell_val = cell_.value
+                if prev_cell is None:
+                    prev_cell = cell_val
+                    merge_start = r
+
+                if ((cell_val is not None) and (cell_val != prev_cell)):
+                    if prev_cell is not None:
+                        self.ws.merge_cells(
+                            start_row=merge_start, start_column=c,
+                            end_row=r-1, end_column=c
+                        )
+                    prev_cell = cell_val
+                    merge_start = r
+                
+                if (row_idx == self.index_start[0]):
+                    self.ws.merge_cells(
+                            start_row=merge_start, start_column=c,
+                            end_row=r, end_column=c
+                        )
+
         ind = chr(ord('@') + (self.startcol + col_idx))        
         self.ws.column_dimensions[ind].width = 30
     
     def columnFormat(self):
         # format report header
         for row_idx in range(1, self.column_start[0] + 1):
-            for col_idx in range(0, self.column_start[1] + 1):
+            prev_cell = None
+            for col_idx in range(1, self.column_start[1] + 1):
                 r = self.startrow + row_idx
                 c = self.startcol + self.index_start[1] + col_idx
                 cell_ = self.ws.cell(row=r, column=c)
                 cell_.font = self.tableFormat['HeaderFont']
                 cell_.fill = self.tableFormat['MedGreyFill']
                 cell_.border = self.tableFormat['ValueBorder']
+
+                cell_val = cell_.value
+                if prev_cell is None:
+                    prev_cell = cell_val
+                    merge_start = c
+
+                if ((cell_val is not None) and (cell_val != prev_cell)):
+                    if prev_cell is not None:
+                        self.ws.merge_cells(
+                            start_row=r, start_column=merge_start,
+                            end_row=r, end_column=c-1
+                        )
+                    prev_cell = cell_val
+                    merge_start = c
+                
+                if (col_idx == self.column_start[1]):
+                    self.ws.merge_cells(
+                            start_row=r, start_column=merge_start,
+                            end_row=r, end_column=c
+                        )
+    
+    def drawFigure(self, fig):
+        self.startrow, self.startcol = self.check_parameters(('startrow', 'startcol'), int)
+        imgdata=io.BytesIO()
+        fig.savefig(imgdata, format='png')
+        ColumnLetter = self.get_ColumnLetter(self.startcol)
+        exl_cell = f'{ColumnLetter}{self.startrow}'
+        self.ws.add_image(Image(imgdata), exl_cell)
